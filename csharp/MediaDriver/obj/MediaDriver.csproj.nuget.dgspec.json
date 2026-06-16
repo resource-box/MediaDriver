@@ -1,0 +1,72 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\MediaDriver.csproj": {}
+  },
+  "projects": {
+    "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\MediaDriver.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\MediaDriver.csproj",
+        "projectName": "MediaDriver",
+        "projectPath": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\MediaDriver.csproj",
+        "packagesPath": "C:\\Users\\dhkim\\.nuget\\packages\\",
+        "outputPath": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\dhkim\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net48"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "targetAlias": "net48",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net48": {
+          "targetAlias": "net48",
+          "dependencies": {
+            "Aeron.Client": {
+              "target": "Package",
+              "version": "[1.51.0, )"
+            },
+            "sbe-tool": {
+              "target": "Package",
+              "version": "[1.23.1, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400\\RuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win7-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}
