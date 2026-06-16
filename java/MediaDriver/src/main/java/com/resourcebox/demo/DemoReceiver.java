@@ -10,10 +10,7 @@ public class DemoReceiver {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting Demo Receiver...");
-        
-        // 캐시 경합(NUMA)을 줄이기 위해 클라이언트용 스레드 Affinity 부여 (코어 5번)
-        System.setProperty("aeron.client.cpu.affinity", "5");
-        
+
         com.resourcebox.MediaDriver.client.DataMessageListener listener = new com.resourcebox.MediaDriver.client.DataMessageListener() {
             @Override
             public void onSingleDataReceived(com.resourcebox.sbe.SingleDataMessageDecoder decoder) {
