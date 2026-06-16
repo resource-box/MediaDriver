@@ -12,7 +12,7 @@ public class MediaDriverService {
 
     @PostConstruct
     private void run() {
-        MediaDriverServer server = new MediaDriverServer("PARCAeron", 1, 2, 3);
+        MediaDriverServer server = new MediaDriverServer("PARCAeron", 1, 10, 5);
         server.start();
     }
 

@@ -2,6 +2,7 @@ package com.resourcebox.MediaDriver.server;
 
 import io.aeron.driver.MediaDriver;
 import io.aeron.driver.ThreadingMode;
+import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,9 @@ public class MediaDriverServer {
         final MediaDriver.Context ctx = new MediaDriver.Context()
                 .aeronDirectoryName(aeronDir)
                 .threadingMode(ThreadingMode.DEDICATED)
+//                .conductorIdleStrategy(BusySpinIdleStrategy.INSTANCE)
+//                .senderIdleStrategy(BusySpinIdleStrategy.INSTANCE)
+//                .receiverIdleStrategy(BusySpinIdleStrategy.INSTANCE)
                 .dirDeleteOnStart(true)
                 .dirDeleteOnShutdown(true);
 

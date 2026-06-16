@@ -21,6 +21,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class AeronPublisherApplication {
 
     public static void main(String[] args) {
+        System.setProperty("aeron.client.cpu.affinity", "6");
         new SpringApplicationBuilder(AeronPublisherApplication.class)
 //                .initializers(new IniConfigApplicationContextInitializer())
                 .run(args);

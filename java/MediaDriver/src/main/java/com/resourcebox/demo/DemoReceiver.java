@@ -1,26 +1,19 @@
-package com.resourcebox.AeronSubscriber.service;
+package com.resourcebox.demo;
 
 import com.resourcebox.MediaDriver.client.DataReceiver;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import org.springframework.stereotype.Service;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Service
-public class DataReceiverService {
-
+public class DemoReceiver {
     private static final String AERON_DIR = "PARCAeron";
     private static final int STREAM_ID = 10;
-    private DataReceiver RECEIVER;
 
-    @PostConstruct
-    private void run() {
+    public static void main(String[] args) throws Exception {
         System.out.println("Starting Demo Receiver...");
-
+        
         // 캐시 경합(NUMA)을 줄이기 위해 클라이언트용 스레드 Affinity 부여 (코어 5번)
         System.setProperty("aeron.client.cpu.affinity", "5");
-
+        
         com.resourcebox.MediaDriver.client.DataMessageListener listener = new com.resourcebox.MediaDriver.client.DataMessageListener() {
             @Override
             public void onSingleDataReceived(com.resourcebox.sbe.SingleDataMessageDecoder decoder) {
@@ -29,7 +22,7 @@ public class DataReceiverService {
                 String timestamp = decoder.timestamp();
                 // System.out.println("Received SingleData: id=" + id + ", value=" + value + ", ts=" + timestamp);
             }
-
+            
             @Override
             public void onListDataReceived(com.resourcebox.sbe.ListDataMessageDecoder decoder) {
                 com.resourcebox.sbe.ListDataMessageDecoder.TimestampDecoder timestampDecoder = decoder.timestamp();
@@ -47,7 +40,7 @@ public class DataReceiverService {
                     // System.out.println("  Entry - id=" + id + ", value=" + value);
                 }
             }
-
+            
             @Override
             public void onListStatusReceived(com.resourcebox.sbe.ListStatusMessageDecoder decoder) {
                 com.resourcebox.sbe.ListStatusMessageDecoder.TimestampDecoder timestampDecoder = decoder.timestamp();
@@ -66,7 +59,7 @@ public class DataReceiverService {
                 }
             }
         };
-
+        
         DataReceiver receiver = new DataReceiver(AERON_DIR, STREAM_ID, listener);
 
         AtomicBoolean running = new AtomicBoolean(true);
@@ -75,11 +68,9 @@ public class DataReceiverService {
             receiver.close();
             System.out.println("Demo Receiver Shutdown");
         }));
-    }
 
-    @PreDestroy
-    private void stop() {
-        RECEIVER.close();
+        System.out.println("Receiver is running in background Agent. Press Ctrl+C to exit.");
+        // 메인 스레드 대기 (AgentRunner가 백그라운드에서 동작하므로)
+        Thread.currentThread().join();
     }
-
 }

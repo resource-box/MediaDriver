@@ -22,8 +22,10 @@ public class DataReceiver implements AutoCloseable {
     private final SingleDataMessageDecoder singleDataDecoder = new SingleDataMessageDecoder();
     private final ListDataMessageDecoder listDataDecoder = new ListDataMessageDecoder();
     private final ListStatusMessageDecoder listStatusDecoder = new ListStatusMessageDecoder();
+    private final DataMessageListener listener;
 
-    public DataReceiver(String aeronDirName, int streamId) {
+    public DataReceiver(String aeronDirName, int streamId, DataMessageListener listener) {
+        this.listener = listener;
         System.out.println("Connecting DataReceiver to Aeron Media Driver...");
         Aeron.Context ctx = new Aeron.Context()
                 .aeronDirectoryName(Path.of(System.getProperty("java.io.tmpdir"), aeronDirName).toAbsolutePath().toString());
@@ -69,50 +71,22 @@ public class DataReceiver implements AutoCloseable {
 
     private void handleSingleData(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
         singleDataDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        int id = singleDataDecoder.id();
-        String value = singleDataDecoder.value();
-        String timestamp = singleDataDecoder.timestamp();
-        
-        // Zero-Allocation 처리를 위해서는 이 시점에서 바로 처리 로직을 호출하거나
-        // primitive 타입으로 로직을 넘겨주어야 합니다.
-        // System.out.println("Received SingleData: id=" + id + ", value=" + value + ", ts=" + timestamp);
+        if (listener != null) {
+            listener.onSingleDataReceived(singleDataDecoder);
+        }
     }
 
     private void handleListData(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
         listDataDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        
-        ListDataMessageDecoder.TimestampDecoder timestampDecoder = listDataDecoder.timestamp();
-        String timestamp = "";
-        if (timestampDecoder.hasNext()) {
-            timestamp = timestampDecoder.next().value();
-        }
-
-        ListDataMessageDecoder.EntriesDecoder entries = listDataDecoder.entries();
-        // System.out.println("Received ListData: ts=" + timestamp + ", count=" + entries.count());
-        while (entries.hasNext()) {
-            entries.next();
-            int id = entries.id();
-            double value = entries.value();
-            // System.out.println("  Entry - id=" + id + ", value=" + value);
+        if (listener != null) {
+            listener.onListDataReceived(listDataDecoder);
         }
     }
 
     private void handleListStatus(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
         listStatusDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        
-        ListStatusMessageDecoder.TimestampDecoder timestampDecoder = listStatusDecoder.timestamp();
-        String timestamp = "";
-        if (timestampDecoder.hasNext()) {
-            timestamp = timestampDecoder.next().value();
-        }
-
-        ListStatusMessageDecoder.EntriesDecoder entries = listStatusDecoder.entries();
-        // System.out.println("Received ListStatus: ts=" + timestamp + ", count=" + entries.count());
-        while (entries.hasNext()) {
-            entries.next();
-            int id = entries.id();
-            String value = entries.value();
-            // System.out.println("  Entry - id=" + id + ", value=" + value);
+        if (listener != null) {
+            listener.onListStatusReceived(listStatusDecoder);
         }
     }
 

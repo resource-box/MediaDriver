@@ -1,35 +1,28 @@
 package com.resourcebox.demo;
 
 import com.resourcebox.MediaDriver.client.DataPublisher;
-import com.resourcebox.MediaDriver.client.DataReceiver;
-import com.resourcebox.MediaDriver.server.MediaDriverServer;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class NewValidationApp {
+public class DemoPublisher {
     private static final String AERON_DIR = "PARCAeron";
     private static final int STREAM_ID = 10;
 
     public static void main(String[] args) throws Exception {
-        System.out.println("Starting Validation App...");
-
-        // 1. Start Media Driver in a background thread
-        Thread driverThread = new Thread(() -> {
-            MediaDriverServer server = new MediaDriverServer("PARCAeron", 1, 2, 3);
-            server.start();
-        });
-        driverThread.setDaemon(true);
-        driverThread.start();
-
-        // 2. Start Receiver
-        DataReceiver receiver = new DataReceiver(AERON_DIR, STREAM_ID);
-
-        // 3. Start Publisher
+        System.out.println("Starting Demo Publisher...");
+        
+        // 캐시 경합(NUMA)을 줄이기 위해 클라이언트용 스레드 Affinity 부여 (코어 6번)
+        System.setProperty("aeron.client.cpu.affinity", "6");
+        
         DataPublisher publisher = new DataPublisher(AERON_DIR, STREAM_ID);
 
         AtomicBoolean running = new AtomicBoolean(true);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> running.set(false)));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            running.set(false);
+            publisher.close();
+            System.out.println("Demo Publisher Shutdown");
+        }));
 
-        // 4. Telemetry and Zero-Allocation High-Speed Data Generation Loop
         System.out.println("Starting high-speed ingestion test...");
         
         long totalRows = 0;
@@ -60,9 +53,5 @@ public class NewValidationApp {
                 lastRows = totalRows;
             }
         }
-
-        System.out.println("Shutting down validation app...");
-        publisher.close();
-        receiver.close();
     }
 }

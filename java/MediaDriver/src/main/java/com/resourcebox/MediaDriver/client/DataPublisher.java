@@ -7,7 +7,7 @@ import com.resourcebox.sbe.SingleDataMessageEncoder;
 import io.aeron.Aeron;
 import io.aeron.Publication;
 import org.agrona.BufferUtil;
-import org.agrona.concurrent.BackoffIdleStrategy;
+
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.UnsafeBuffer;
 import java.nio.ByteBuffer;
@@ -24,9 +24,8 @@ public class DataPublisher implements AutoCloseable {
     private final ListDataMessageEncoder listDataEncoder = new ListDataMessageEncoder();
     private final ListStatusMessageEncoder listStatusEncoder = new ListStatusMessageEncoder();
     
-    // Aeron offer 재시도를 위한 IdleStrategy
-    private final IdleStrategy idleStrategy = new BackoffIdleStrategy(
-            100, 10, TimeUnit.MICROSECONDS.toNanos(1), TimeUnit.MICROSECONDS.toNanos(100));
+    // Aeron offer 재시도를 위한 IdleStrategy (Zero-Allocation 및 Park 방지를 위해 BusySpin 사용)
+    private final IdleStrategy idleStrategy = new org.agrona.concurrent.BusySpinIdleStrategy();
 
     public DataPublisher(String aeronDirName, int streamId) {
         System.out.println("Connecting to Aeron Media Driver...");
