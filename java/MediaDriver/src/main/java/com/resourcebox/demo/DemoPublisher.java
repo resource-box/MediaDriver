@@ -7,11 +7,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DemoPublisher {
     private static final String AERON_DIR = "PARCAeron";
     private static final int STREAM_ID = 10;
+    private static final int CAPACITY = 1024;
+    private static final int ALIGNMENT = 16;
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting Demo Publisher...");
 
-        DataPublisher publisher = new DataPublisher(AERON_DIR, STREAM_ID);
+        DataPublisher publisher = new DataPublisher(AERON_DIR, STREAM_ID, CAPACITY, ALIGNMENT);
 
         AtomicBoolean running = new AtomicBoolean(true);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

@@ -11,41 +11,50 @@ import org.agrona.concurrent.AgentRunner;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import java.nio.file.Path;
+import java.util.logging.Logger;
 
+/**
+ * Media Driver 환경에서 메시지를 수신하는 클래스입니다.
+ */
 public class DataReceiver implements AutoCloseable {
+
+    // Aeron
     private final Aeron aeron;
     private final Subscription subscription;
     private final AgentRunner agentRunner;
 
-    // SBE Decoders (객체 재사용을 통한 Zero-Allocation)
+    // SBE
     private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
     private final SingleDataMessageDecoder singleDataDecoder = new SingleDataMessageDecoder();
     private final ListDataMessageDecoder listDataDecoder = new ListDataMessageDecoder();
     private final ListStatusMessageDecoder listStatusDecoder = new ListStatusMessageDecoder();
     private final DataMessageListener listener;
 
+    // Logger
+    private final Logger log = Logger.getLogger(DataReceiver.class.getName());
+
     public DataReceiver(String aeronDirName, int streamId, DataMessageListener listener) {
-        this.listener = listener;
-        System.out.println("Connecting DataReceiver to Aeron Media Driver...");
+        log.info("Connecting DataReceiver to Aeron Media Driver...");
+
+        // Context Setup
         Aeron.Context ctx = new Aeron.Context()
                 .aeronDirectoryName(Path.of(System.getProperty("java.io.tmpdir"), aeronDirName).toAbsolutePath().toString());
         this.aeron = Aeron.connect(ctx);
         String channel = "aeron:ipc";
         this.subscription = aeron.addSubscription(channel, streamId);
 
-        // 지속적 수신을 위한 Agent 및 Runner 설정 (별도 스레드에서 무한 Polling)
+        // Listener
+        this.listener = listener;
+
+        // Agent & Runner
         IdleStrategy idleStrategy = new BusySpinIdleStrategy();
         ReceiverAgent agent = new ReceiverAgent(subscription, this::onFragment);
-        
         this.agentRunner = new AgentRunner(idleStrategy, Throwable::printStackTrace, null, agent);
         AgentRunner.startOnThread(agentRunner);
         
-        System.out.println("DataReceiver initialized and running.");
+        log.info("DataReceiver initialized and running.");
     }
 
-    /**
-     * 수신된 바이너리 버퍼를 파싱하여 적절한 처리 로직으로 라우팅합니다.
-     */
     private void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
         headerDecoder.wrap(buffer, offset);
         int templateId = headerDecoder.templateId();
@@ -99,7 +108,8 @@ public class DataReceiver implements AutoCloseable {
     }
 
     /**
-     * Aeron Subscription을 지속적으로 Polling하는 Agrona Agent 구현체
+     * Aeron Subscription Polling 작업을 수행하는 Agrona 에이전트입니다.
+     * (해당 클래스의 Record 전환 시 성능 저하 발생)
      */
     private static class ReceiverAgent implements Agent {
         private final Subscription subscription;
@@ -120,5 +130,7 @@ public class DataReceiver implements AutoCloseable {
         public String roleName() {
             return "data-receiver-agent";
         }
+
     }
+
 }

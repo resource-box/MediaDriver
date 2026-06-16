@@ -11,6 +11,8 @@ public class DataPublisherService implements SmartLifecycle {
 
     private static final String AERON_DIR = "PARCAeron";
     private static final int STREAM_ID = 10;
+    private static final int CAPACITY = 1024;
+    private static final int ALIGNMENT = 16;
 
     private DataPublisher publisher;
     private Thread workerThread;
@@ -57,7 +59,7 @@ public class DataPublisherService implements SmartLifecycle {
 
     private void publishingLoop() {
         // Client Conductor는 생성자에서 설정한 AERON_CLIENT_CORE(14)를 따름
-        publisher = new DataPublisher(AERON_DIR, STREAM_ID);
+        publisher = new DataPublisher(AERON_DIR, STREAM_ID, CAPACITY, ALIGNMENT);
 
         int[] ids = {0, 1, 2, 3, 4};
         double[] values = {0.0, 1.5, 3.0, 4.5, 6.0};
