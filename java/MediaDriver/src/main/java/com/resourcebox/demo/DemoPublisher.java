@@ -10,10 +10,7 @@ public class DemoPublisher {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting Demo Publisher...");
-        
-        // 캐시 경합(NUMA)을 줄이기 위해 클라이언트용 스레드 Affinity 부여 (코어 6번)
-        System.setProperty("aeron.client.cpu.affinity", "6");
-        
+
         DataPublisher publisher = new DataPublisher(AERON_DIR, STREAM_ID);
 
         AtomicBoolean running = new AtomicBoolean(true);
