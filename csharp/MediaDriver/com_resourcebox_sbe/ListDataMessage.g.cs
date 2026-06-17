@@ -608,7 +608,7 @@ namespace Com.Resourcebox.Sbe
             builder.Append("]");
 
             this.Limit = originalLimit;
-
         }
     }
+
 }
