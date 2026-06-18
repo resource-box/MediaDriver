@@ -6,15 +6,18 @@ import io.aeron.Subscription;
 import io.aeron.logbuffer.FragmentHandler;
 import io.aeron.logbuffer.Header;
 import org.agrona.DirectBuffer;
-import org.agrona.concurrent.Agent;
-import org.agrona.concurrent.AgentRunner;
-import org.agrona.concurrent.BusySpinIdleStrategy;
-import org.agrona.concurrent.IdleStrategy;
+import org.agrona.concurrent.*;
+import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
+import org.agrona.concurrent.ringbuffer.RingBuffer;
+import org.agrona.concurrent.ringbuffer.RingBufferDescriptor;
+
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
- * Media Driver 환경에서 메시지를 수신하는 클래스입니다.
+ * Media Driver 환경에서 메시지를 수신하고 비즈니스 로직을 수행하는 클래스입니다.
  */
 public class DataReceiver implements AutoCloseable {
 
@@ -22,95 +25,116 @@ public class DataReceiver implements AutoCloseable {
     private final Aeron aeron;
     private final Subscription subscription;
     private final AgentRunner agentRunner;
+    private final DataMessageListener listener;
+
+    // Agrona Ring Buffer & Worker
+    private static final int BUFFER_CAPACITY = 16 * 1024 * 1024 + RingBufferDescriptor.TRAILER_LENGTH;
+    private final RingBuffer ringBuffer;
+    private final AtomicBoolean running = new AtomicBoolean(true);
+    private Thread workerThread;
 
     // SBE
-    private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
     private final SingleDataMessageDecoder singleDataDecoder = new SingleDataMessageDecoder();
     private final ListDataMessageDecoder listDataDecoder = new ListDataMessageDecoder();
     private final ListStatusMessageDecoder listStatusDecoder = new ListStatusMessageDecoder();
-    private final DataMessageListener listener;
+    private final MessageHeaderDecoder headerDecoder = new MessageHeaderDecoder();
 
     // Logger
     private final Logger log = Logger.getLogger(DataReceiver.class.getName());
 
     public DataReceiver(String aeronDirName, int streamId, DataMessageListener listener) {
-        log.info("Connecting DataReceiver to Aeron Media Driver...");
+        log.info(">> INITIALIZING RECEIVER..");
 
-        // Context Setup
+        // Listener 주입
+        this.listener = listener;
+
+        // Media Driver 연결 및 구독
         Aeron.Context ctx = new Aeron.Context()
                 .aeronDirectoryName(Path.of(System.getProperty("java.io.tmpdir"), aeronDirName).toAbsolutePath().toString());
         this.aeron = Aeron.connect(ctx);
-        String channel = "aeron:ipc";
-        this.subscription = aeron.addSubscription(channel, streamId);
+        this.subscription = aeron.addSubscription("aeron:ipc", streamId);
 
-        // Listener
-        this.listener = listener;
+        log.info("MEDIA DRIVER CONNECTED - Channel: aeron:ipc, StreamId: " + streamId);
 
-        // Agent & Runner
+        // Ring Buffer 초기화 및 Worker Thread 시작
+        this.ringBuffer = new ManyToOneRingBuffer(
+                new UnsafeBuffer(ByteBuffer.allocateDirect(BUFFER_CAPACITY))
+        );
+        startWorkerThread();
+
+        log.info("WORKER THREAD STARTED - RingBuffer Capacity: " + BUFFER_CAPACITY);
+
+        // Agent Runner 초기화 및 시작
         IdleStrategy idleStrategy = new BusySpinIdleStrategy();
         ReceiverAgent agent = new ReceiverAgent(subscription, this::onFragment);
         this.agentRunner = new AgentRunner(idleStrategy, Throwable::printStackTrace, null, agent);
         AgentRunner.startOnThread(agentRunner);
-        
-        log.info("DataReceiver initialized and running.");
+
+        log.info("AGENT RUNNER STARTED");
     }
 
     private void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
         headerDecoder.wrap(buffer, offset);
         int templateId = headerDecoder.templateId();
-        int actingBlockLength = headerDecoder.blockLength();
-        int actingVersion = headerDecoder.version();
+
+        // ** <중요> ENCODED_LENGTH 파라미터를 사용해 순회 없이 length 계산
         int messageOffset = offset + MessageHeaderDecoder.ENCODED_LENGTH;
+        int messageLength = length - MessageHeaderDecoder.ENCODED_LENGTH;
 
-        switch (templateId) {
-            case SingleDataMessageDecoder.TEMPLATE_ID:
-                handleSingleData(buffer, messageOffset, actingBlockLength, actingVersion);
-                break;
-            case ListDataMessageDecoder.TEMPLATE_ID:
-                handleListData(buffer, messageOffset, actingBlockLength, actingVersion);
-                break;
-            case ListStatusMessageDecoder.TEMPLATE_ID:
-                handleListStatus(buffer, messageOffset, actingBlockLength, actingVersion);
-                break;
-            default:
-                System.out.println("Unknown template id: " + templateId);
-                break;
+        // ** <중요> Ring Buffer Write
+        while (!ringBuffer.write(templateId, buffer, messageOffset, messageLength)) {
+            Thread.onSpinWait();
         }
     }
 
-    private void handleSingleData(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
-        singleDataDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        if (listener != null) {
-            listener.onSingleDataReceived(singleDataDecoder);
-        }
-    }
+    private void startWorkerThread() {
+        final MessageHandler messageHandler = (msgTypeId, buffer, offset, length) -> {
+            switch (msgTypeId) {
+                case SingleDataMessageDecoder.TEMPLATE_ID:
+                    singleDataDecoder.wrap(buffer, offset, singleDataDecoder.sbeBlockLength(), singleDataDecoder.sbeSchemaVersion());
+                    if (listener != null) listener.onSingleDataReceived(singleDataDecoder);
+                    break;
+                case ListDataMessageDecoder.TEMPLATE_ID:
+                    listDataDecoder.wrap(buffer, offset, listDataDecoder.sbeBlockLength(), listDataDecoder.sbeSchemaVersion());
+                    if (listener != null) listener.onListDataReceived(listDataDecoder);
+                    break;
+                case ListStatusMessageDecoder.TEMPLATE_ID:
+                    listStatusDecoder.wrap(buffer, offset, listStatusDecoder.sbeBlockLength(), listStatusDecoder.sbeSchemaVersion());
+                    if (listener != null) listener.onListStatusReceived(listStatusDecoder);
+                    break;
+                default:
+                    log.warning("Unknown msgTypeId from RingBuffer: " + msgTypeId);
+            }
+        };
 
-    private void handleListData(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
-        listDataDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        if (listener != null) {
-            listener.onListDataReceived(listDataDecoder);
-        }
-    }
-
-    private void handleListStatus(DirectBuffer buffer, int offset, int actingBlockLength, int actingVersion) {
-        listStatusDecoder.wrap(buffer, offset, actingBlockLength, actingVersion);
-        if (listener != null) {
-            listener.onListStatusReceived(listStatusDecoder);
-        }
+        workerThread = new Thread(() -> {
+            final IdleStrategy idleStrategy = new BusySpinIdleStrategy();
+            while (running.get()) {
+                int messagesRead = ringBuffer.read(messageHandler);
+                idleStrategy.idle(messagesRead);
+            }
+        }, "data-receiver-worker");
+        workerThread.start();
     }
 
     @Override
     public void close() {
+        log.info(">> CLOSING RECEIVER..");
+        running.set(false);
         if (agentRunner != null) agentRunner.close();
         if (subscription != null) subscription.close();
         if (aeron != null) aeron.close();
-        System.out.println("DataReceiver closed.");
+
+        if (workerThread != null) {
+            try {
+                workerThread.join(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        log.info("DATA RECEIVER CLOSED");
     }
 
-    /**
-     * Aeron Subscription Polling 작업을 수행하는 Agrona 에이전트입니다.
-     * (해당 클래스의 Record 전환 시 성능 저하 발생)
-     */
     private static class ReceiverAgent implements Agent {
         private final Subscription subscription;
         private final FragmentHandler fragmentHandler;
@@ -130,7 +154,6 @@ public class DataReceiver implements AutoCloseable {
         public String roleName() {
             return "data-receiver-agent";
         }
-
     }
 
 }

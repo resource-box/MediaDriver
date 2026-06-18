@@ -24,18 +24,6 @@
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>
 
-<!--		<dependency>-->
-<!--			<groupId>org.projectlombok</groupId>-->
-<!--			<artifactId>lombok</artifactId>-->
-<!--			<optional>true</optional>-->
-<!--		</dependency>-->
-
-		<dependency>
-			<groupId>com.resourcebox</groupId>
-			<artifactId>MediaDriver</artifactId>
-			<version>1.1.0</version>
-		</dependency>
-
 		<dependency>
 			<groupId>com.resourcebox</groupId>
 			<artifactId>SpringInitializer</artifactId>

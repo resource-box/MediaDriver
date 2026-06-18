@@ -14,14 +14,8 @@
     <dependencies>
         <dependency>
             <groupId>com.resourcebox</groupId>
-            <artifactId>Disruptors</artifactId>
-            <version>1.0.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.resourcebox</groupId>
-            <artifactId>KryoSerializer</artifactId>
-            <version>1.0.0</version>
+            <artifactId>MediaDriver</artifactId>
+            <version>1.2.0</version>
         </dependency>
     </dependencies>
 
