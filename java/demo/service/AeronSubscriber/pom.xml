@@ -12,6 +12,17 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <dependency>
+            <groupId>com.resourcebox</groupId>
+            <artifactId>Disruptors</artifactId>
+            <version>1.0.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.resourcebox</groupId>
+            <artifactId>KryoSerializer</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 
 </project>

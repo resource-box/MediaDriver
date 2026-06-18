@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MediaDriver")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+abc809b1e024b2c3e9a2abf251fc61a3a7389f59")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6bff3e6d903218e49e6d5ba7d3e0cca53cf9f05a")]
 [assembly: System.Reflection.AssemblyProductAttribute("MediaDriver")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MediaDriver")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

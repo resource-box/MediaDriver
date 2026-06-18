@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|c:\\hooniegit\\git\\resourcebox\\mediadriver\\csharp\\mediadriver\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|c:\\hooniegit\\git\\resourcebox\\mediadriver\\csharp\\mediadriver\\demo\\demosubscriber.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|solutionrelative:demo\\demosubscriber.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|c:\\hooniegit\\git\\resourcebox\\mediadriver\\csharp\\mediadriver\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5B39B02F-5904-4BA8-942A-3342CE463F14}|MediaDriver.csproj|c:\\hooniegit\\git\\resourcebox\\mediadriver\\csharp\\mediadriver\\subscriber\\aeronsubscriber.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -26,7 +26,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
@@ -49,33 +49,33 @@
               "RelativeDocumentMoniker": "Subscriber\\AeronSubscriber.cs",
               "ToolTip": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\Subscriber\\AeronSubscriber.cs",
               "RelativeToolTip": "Subscriber\\AeronSubscriber.cs",
-              "ViewState": "AgIAAH8AAAAAAAAAAIBAwIkAAAA3AAAAAAAAAA==",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAwDMAAAAtAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-17T23:16:33.835Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "DemoSubscriber.cs",
               "DocumentMoniker": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\Demo\\DemoSubscriber.cs",
               "RelativeDocumentMoniker": "Demo\\DemoSubscriber.cs",
               "ToolTip": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\Demo\\DemoSubscriber.cs",
               "RelativeToolTip": "Demo\\DemoSubscriber.cs",
-              "ViewState": "AgIAAB0AAAAAAAAAAAA6wCgAAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-16T06:25:35.19Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\hooniegit\\Git\\ResourceBox\\MediaDriver\\csharp\\MediaDriver\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAA4AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-16T06:11:17.061Z",
               "EditorCaption": ""

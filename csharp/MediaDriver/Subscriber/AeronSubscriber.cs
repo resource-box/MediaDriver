@@ -23,8 +23,7 @@ namespace MediaDriver.Subscriber
 
         private readonly IDataMessageListener _listener;
         
-        // Zero-Allocation을 위한 Pre-allocated 캐시 배열 및 디코딩 포인터 래퍼
-        private readonly byte[] _cachedPayload = new byte[1024 * 1024]; // 1MB payload cache
+        private readonly byte[] _payloadBuffer = new byte[1024 * 1024]; 
         private readonly DirectBuffer _sbeBuffer = new DirectBuffer(new byte[0]); 
 
         public AeronSubscriber(string aeronDirName, int streamId, IDataMessageListener listener)
@@ -32,6 +31,7 @@ namespace MediaDriver.Subscriber
             _listener = listener ?? throw new ArgumentNullException(nameof(listener));
             
             Console.WriteLine("Connecting AeronSubscriber to Media Driver...");
+            
             var aeronDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), aeronDirName);
             var ctx = new Aeron.Context().AeronDirectoryName(aeronDir);
             
@@ -57,11 +57,9 @@ namespace MediaDriver.Subscriber
 
         private void OnFragment(IDirectBuffer buffer, int offset, int length, Header header)
         {
-            // IPC off-heap 메모리 데이터를 1MB 사전 할당 캐시 배열로 복사 (할당 없음)
-            buffer.GetBytes(offset, _cachedPayload, 0, length);
-            _sbeBuffer.Wrap(_cachedPayload);
+            buffer.GetBytes(offset, _payloadBuffer, 0, length);
+            _sbeBuffer.Wrap(_payloadBuffer);
             
-            // 캐시 배열의 0번 인덱스부터 복사했으므로, 오프셋은 0으로 지정
             _headerDecoder.Wrap(_sbeBuffer, 0, MessageHeader.SbeSchemaVersion);
             int templateId = _headerDecoder.TemplateId;
             int actingBlockLength = _headerDecoder.BlockLength;
@@ -82,9 +80,6 @@ namespace MediaDriver.Subscriber
                     _listStatusDecoder.WrapForDecode(_sbeBuffer, messageOffset, actingBlockLength, actingVersion);
                     _listener.OnListStatusReceived(_listStatusDecoder);
                     break;
-                default:
-                    Console.WriteLine("Unknown template id: " + templateId);
-                    break;
             }
         }
 
@@ -101,7 +96,7 @@ namespace MediaDriver.Subscriber
             private readonly AeronSubscriber _parent;
             private readonly Subscription _subscription;
             private readonly FragmentHandler _fragmentHandler;
-            private const int FragmentLimit = 50; // 한번 폴링당 가져올 청크 수
+            private const int FragmentLimit = 100;
 
             public ReceiverAgent(AeronSubscriber parent, Subscription subscription)
             {
@@ -110,21 +105,9 @@ namespace MediaDriver.Subscriber
                 _fragmentHandler = parent.OnFragment;
             }
 
-            public void OnStart()
-            {
-                ApplyAffinity();
-            }
-
-            public int DoWork()
-            {
-                return _subscription.Poll(_fragmentHandler, FragmentLimit);
-            }
-
-            public string RoleName()
-            {
-                return "aeron-subscriber-agent";
-            }
-
+            public void OnStart() => ApplyAffinity();
+            public int DoWork() => _subscription.Poll(_fragmentHandler, FragmentLimit);
+            public string RoleName() => "aeron-subscriber-agent";
             public void OnClose() { }
 
             private void ApplyAffinity()
@@ -134,24 +117,13 @@ namespace MediaDriver.Subscriber
                 {
                     try
                     {
-                        // aeron.client.cpu.affinity 가 정수로 주어졌을 때 해당 코어(비트마스크)로 바인딩
-#pragma warning disable CA1416 // .NET Framework에서는 경고 없음
+#pragma warning disable CA1416
                         long mask = 1L << coreIndex;
 #pragma warning restore CA1416
-                        
-                        // 현재 쓰레드를 OS 스케줄러 상에서 특정 코어로 바인딩
                         Thread.BeginThreadAffinity(); 
-                        
-                        // C#에서 스레드별 Affinity는 Win32 API가 필요하므로 프로세스 전체 레벨의 Affinity를 쓰거나,
-                        // 임시로 프로세스 Affinity를 설정합니다. (단일 데모용)
                         Process.GetCurrentProcess().ProcessorAffinity = new IntPtr(mask);
-                        
-                        Console.WriteLine($"Applied Thread Affinity to Core {coreIndex} based on aeron.client.cpu.affinity.");
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to set CPU affinity: {ex.Message}");
-                    }
+                    catch (Exception) { }
                 }
             }
         }
