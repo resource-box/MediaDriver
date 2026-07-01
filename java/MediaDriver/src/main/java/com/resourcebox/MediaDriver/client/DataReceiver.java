@@ -5,6 +5,7 @@ import io.aeron.Aeron;
 import io.aeron.Subscription;
 import io.aeron.logbuffer.FragmentHandler;
 import io.aeron.logbuffer.Header;
+import io.aeron.FragmentAssembler;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.*;
 import org.agrona.concurrent.ringbuffer.ManyToOneRingBuffer;
@@ -66,7 +67,8 @@ public class DataReceiver implements AutoCloseable {
 
         // Agent Runner 초기화 및 시작
         IdleStrategy idleStrategy = new BusySpinIdleStrategy();
-        ReceiverAgent agent = new ReceiverAgent(subscription, this::onFragment);
+        FragmentAssembler assembler = new FragmentAssembler(this::onFragment);
+        ReceiverAgent agent = new ReceiverAgent(subscription, assembler);
         this.agentRunner = new AgentRunner(idleStrategy, Throwable::printStackTrace, null, agent);
         AgentRunner.startOnThread(agentRunner);
 

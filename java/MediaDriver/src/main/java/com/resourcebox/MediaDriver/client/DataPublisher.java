@@ -20,16 +20,29 @@ import java.nio.file.Path;
  */
 public class DataPublisher implements AutoCloseable {
 
-    // Aeron
     private final Aeron aeron;
     private final Publication publication;
-    private final UnsafeBuffer buffer;
 
-    // SBE
-    private final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
-    private final SingleDataMessageEncoder singleDataEncoder = new SingleDataMessageEncoder();
-    private final ListDataMessageEncoder listDataEncoder = new ListDataMessageEncoder();
-    private final ListStatusMessageEncoder listStatusEncoder = new ListStatusMessageEncoder();
+    private final String aeronDir;
+    private final int capacity;
+    private final int alignment;
+    private final int streamId;
+
+    // SBE Encoders and Buffer wrapped in ThreadLocal for zero-allocation Thread-Safety
+    private static class PublisherState {
+        final UnsafeBuffer buffer;
+        final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
+        final SingleDataMessageEncoder singleDataEncoder = new SingleDataMessageEncoder();
+        final ListDataMessageEncoder listDataEncoder = new ListDataMessageEncoder();
+        final ListStatusMessageEncoder listStatusEncoder = new ListStatusMessageEncoder();
+
+        PublisherState(int capacity, int alignment) {
+            ByteBuffer byteBuffer = BufferUtil.allocateDirectAligned(capacity, alignment);
+            this.buffer = new UnsafeBuffer(byteBuffer);
+        }
+    }
+
+    private final ThreadLocal<PublisherState> threadState;
 
     // Aeron offer 재시도를 위한 IdleStrategy (Zero-Allocation 및 Park 방지를 위해 BusySpin 사용)
     private final IdleStrategy idleStrategy = new BusySpinIdleStrategy();
@@ -40,32 +53,35 @@ public class DataPublisher implements AutoCloseable {
     public DataPublisher(String aeronDir, int streamId, int capacity, int alignment) {
         log.info(">> CONNECTING TO MEDIA DRIVER..");
 
+        this.aeronDir = aeronDir;
+        this.streamId = streamId;
+        this.capacity = capacity;
+        this.alignment = alignment;
+
         // Context Setup
         Aeron.Context ctx = new Aeron.Context()
-                .aeronDirectoryName(Path.of(System.getProperty("java.io.tmpdir"), aeronDir).toAbsolutePath().toString());
+                .aeronDirectoryName(Path.of(System.getProperty("java.io.tmpdir"), this.aeronDir).toAbsolutePath().toString());
         this.aeron = Aeron.connect(ctx);
-        String channel = "aeron:ipc";
-        this.publication = aeron.addPublication(channel, streamId);
+        this.publication = aeron.addPublication("aeron:ipc", this.streamId);
 
-        // ** <중요> 메시지 조립용 Off-heap 버퍼(재사용) - Zero-Allocation
-        ByteBuffer byteBuffer = BufferUtil.allocateDirectAligned(capacity, alignment);
-        this.buffer = new UnsafeBuffer(byteBuffer);
+        this.threadState = ThreadLocal.withInitial(() -> new PublisherState(capacity, alignment));
 
-        log.info("DATA PUBLISHER CONNECTED - Channel: {}, StreamId: {}, Capacity: {}, Alignment: {}", channel, streamId, capacity, alignment);
+        log.info("DATA PUBLISHER CONNECTED - StreamId: {}, Capacity: {}, Alignment: {}", streamId, capacity, alignment);
     }
 
     /**
      * SingleData 발행
      */
     public boolean publishSingleData(int id, String value, String timestamp) {
-        singleDataEncoder.wrapAndApplyHeader(buffer, 0, headerEncoder)
+        PublisherState state = threadState.get();
+        state.singleDataEncoder.wrapAndApplyHeader(state.buffer, 0, state.headerEncoder)
                 .id(id)
                 .value(value)
                 .timestamp(timestamp);
 
         // 메세지 데이터 발행
-        int length = MessageHeaderEncoder.ENCODED_LENGTH + singleDataEncoder.encodedLength();
-        return offerToPublication(length);
+        int length = MessageHeaderEncoder.ENCODED_LENGTH + state.singleDataEncoder.encodedLength();
+        return offerToPublication(state.buffer, length);
     }
 
     /**
@@ -76,13 +92,14 @@ public class DataPublisher implements AutoCloseable {
             throw new IllegalArgumentException("ids and values array length must match");
         }
 
-        listDataEncoder.wrapAndApplyHeader(buffer, 0, headerEncoder);
+        PublisherState state = threadState.get();
+        state.listDataEncoder.wrapAndApplyHeader(state.buffer, 0, state.headerEncoder);
 
         // Timestamp
-        listDataEncoder.timestampCount(1).next().value(timestamp);
+        state.listDataEncoder.timestampCount(1).next().value(timestamp);
 
         // Entries
-        ListDataMessageEncoder.EntriesEncoder entriesEncoder = listDataEncoder.entriesCount(ids.length);
+        ListDataMessageEncoder.EntriesEncoder entriesEncoder = state.listDataEncoder.entriesCount(ids.length);
         for (int i = 0; i < ids.length; i++) {
             entriesEncoder.next()
                     .id(ids[i])
@@ -90,8 +107,8 @@ public class DataPublisher implements AutoCloseable {
         }
 
         // 메세지 데이터 발행
-        int length = MessageHeaderEncoder.ENCODED_LENGTH + listDataEncoder.encodedLength();
-        return offerToPublication(length);
+        int length = MessageHeaderEncoder.ENCODED_LENGTH + state.listDataEncoder.encodedLength();
+        return offerToPublication(state.buffer, length);
     }
 
     /**
@@ -102,13 +119,14 @@ public class DataPublisher implements AutoCloseable {
             throw new IllegalArgumentException("IDS SIZE != VALUES SIZE");
         }
 
-        listStatusEncoder.wrapAndApplyHeader(buffer, 0, headerEncoder);
+        PublisherState state = threadState.get();
+        state.listStatusEncoder.wrapAndApplyHeader(state.buffer, 0, state.headerEncoder);
 
         // Timestamp
-        listStatusEncoder.timestampCount(1).next().value(timestamp);
+        state.listStatusEncoder.timestampCount(1).next().value(timestamp);
 
         // Entries
-        ListStatusMessageEncoder.EntriesEncoder entriesEncoder = listStatusEncoder.entriesCount(ids.length);
+        ListStatusMessageEncoder.EntriesEncoder entriesEncoder = state.listStatusEncoder.entriesCount(ids.length);
         for (int i = 0; i < ids.length; i++) {
             entriesEncoder.next()
                     .id(ids[i])
@@ -116,11 +134,11 @@ public class DataPublisher implements AutoCloseable {
         }
 
         // 메세지 데이터 발행
-        int length = MessageHeaderEncoder.ENCODED_LENGTH + listStatusEncoder.encodedLength();
-        return offerToPublication(length);
+        int length = MessageHeaderEncoder.ENCODED_LENGTH + state.listStatusEncoder.encodedLength();
+        return offerToPublication(state.buffer, length);
     }
 
-    private boolean offerToPublication(int length) {
+    private boolean offerToPublication(UnsafeBuffer buffer, int length) {
         // 루프 시작 전 IdleStrategy 상태 초기화
         idleStrategy.reset();
 
@@ -137,7 +155,7 @@ public class DataPublisher implements AutoCloseable {
             }
             // BACK PRESSURE & NOT CONNECTED & CLOSED :: Drop
             else {
-                log.warn("FAILED TO  {}", result);
+                log.warn(">> FAILED TO PUBLISH at STREAM ID {} : {}", streamId, result);
                 return false;
             }
         }
